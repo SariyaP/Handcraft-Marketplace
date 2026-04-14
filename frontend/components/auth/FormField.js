@@ -9,6 +9,9 @@ export default function FormField({
   placeholder,
   autoComplete,
   disabled = false,
+  required = false,
+  minLength,
+  maxLength,
   children,
 }) {
   return (
@@ -26,6 +29,9 @@ export default function FormField({
           placeholder={placeholder}
           autoComplete={autoComplete}
           disabled={disabled}
+          required={required}
+          minLength={minLength}
+          maxLength={maxLength}
           className="form-input"
         />
       )}

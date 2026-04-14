@@ -79,6 +79,9 @@ export default function RegisterPage() {
           placeholder="Ari Artisan"
           autoComplete="name"
           disabled={isLoading}
+          required
+          minLength={1}
+          maxLength={150}
         />
         <FormField
           label="Email"
@@ -89,6 +92,7 @@ export default function RegisterPage() {
           placeholder="you@example.com"
           autoComplete="email"
           disabled={isLoading}
+          required
         />
         <FormField
           label="Password"
@@ -99,6 +103,9 @@ export default function RegisterPage() {
           placeholder="At least 8 characters"
           autoComplete="new-password"
           disabled={isLoading}
+          required
+          minLength={8}
+          maxLength={128}
         />
         <FormField label="Role" name="role" disabled={isLoading}>
           <select
@@ -107,6 +114,7 @@ export default function RegisterPage() {
             value={values.role}
             onChange={handleChange}
             disabled={isLoading}
+            required
             className="form-input"
           >
             <option value="customer">Customer</option>

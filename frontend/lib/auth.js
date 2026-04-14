@@ -69,7 +69,14 @@ export async function parseApiResponse(response) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    const validationMessage = Array.isArray(data?.detail)
+      ? data.detail
+          .map((issue) => issue?.msg)
+          .filter(Boolean)
+          .join(" ")
+      : null;
     const message =
+      validationMessage ||
       data?.detail ||
       data?.message ||
       "Something went wrong while contacting the server.";

@@ -76,6 +76,7 @@ export default function LoginPage() {
           placeholder="maker@example.com"
           autoComplete="email"
           disabled={isLoading}
+          required
         />
         <FormField
           label="Password"
@@ -86,6 +87,9 @@ export default function LoginPage() {
           placeholder="Enter your password"
           autoComplete="current-password"
           disabled={isLoading}
+          required
+          minLength={8}
+          maxLength={128}
         />
         <FormMessage message={errorMessage} />
         <SubmitButton isLoading={isLoading} loadingLabel="Signing In...">

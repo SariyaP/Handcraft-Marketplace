@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import LogoutButton from "../../components/auth/LogoutButton";
+
 export default function CustomerPage() {
   return (
     <main className="page">
@@ -13,6 +15,7 @@ export default function CustomerPage() {
           <Link className="primary-link" href="/home">
             Back to home
           </Link>
+          <LogoutButton />
         </div>
       </section>
     </main>

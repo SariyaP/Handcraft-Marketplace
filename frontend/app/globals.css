@@ -252,6 +252,27 @@ p {
   gap: 1.25rem;
 }
 
+.landing-card {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.landing-status {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+}
+
+.landing-status-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .dashboard-actions {
   display: flex;
   flex-wrap: wrap;
