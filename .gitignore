@@ -5,6 +5,8 @@
 frontend/.env
 frontend/.env.local
 backend/.env
+backend/data/
+backend/*.db
 
 # Python / FastAPI
 __pycache__/

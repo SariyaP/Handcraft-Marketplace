@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   const appName =
     process.env.NEXT_PUBLIC_APP_NAME ?? "Handcraft Marketplace";
@@ -7,12 +9,23 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="card">
-        <p className="eyebrow">Project scaffold</p>
+        <p className="eyebrow">Authentication Ready</p>
         <h1>{appName}</h1>
         <p>
-          Next.js App Router and JavaScript are ready. Connect frontend work to
-          <strong> {apiBaseUrl}</strong> when feature development begins.
+          FastAPI auth is wired to <strong>{apiBaseUrl}</strong>. Sign in,
+          register, or open the authenticated home screen.
         </p>
+        <div className="dashboard-actions">
+          <Link className="primary-link" href="/login">
+            Login
+          </Link>
+          <Link className="ghost-link" href="/register">
+            Register
+          </Link>
+          <Link className="ghost-link" href="/home">
+            Home
+          </Link>
+        </div>
       </section>
     </main>
   );
