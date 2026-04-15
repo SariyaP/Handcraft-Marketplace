@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import AppShell from "../../components/ui/AppShell";
 import { LoadingState } from "../../components/ui/StateCard";
-import {
-  clearAuthSession,
-  fetchCurrentUser,
-  getStoredToken,
-  getStoredUser,
-  hasRequiredRole,
-  persistAuthSession,
-} from "../../lib/auth";
+import { getAdminNav, getLogoutAction } from "../../lib/navigation";
+import { useRequireRole } from "../../lib/useRequireRole";
 import {
   fetchAdminProducts,
   fetchAdminReviews,
@@ -25,8 +18,7 @@ import {
 } from "../../lib/admin";
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, token, isCheckingAuth } = useRequireRole("admin");
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [verifications, setVerifications] = useState([]);
@@ -38,33 +30,13 @@ export default function AdminPage() {
   const [activeAction, setActiveAction] = useState("");
 
   useEffect(() => {
-    const token = getStoredToken();
-    const cachedUser = getStoredUser();
-
-    if (!token || !cachedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!hasRequiredRole(cachedUser, ["admin"])) {
-      router.replace("/products");
+    if (isCheckingAuth || !token) {
       return;
     }
 
     async function loadDashboard() {
+      setIsLoading(true);
       try {
-        const currentUser = await fetchCurrentUser(token);
-        if (!hasRequiredRole(currentUser, ["admin"])) {
-          router.replace("/products");
-          return;
-        }
-
-        persistAuthSession({
-          access_token: token,
-          user: currentUser,
-        });
-        setUser(currentUser);
-
         const [allUsers, allProducts, allVerifications, allReviews] = await Promise.all([
           fetchAdminUsers(token),
           fetchAdminProducts(token),
@@ -88,16 +60,14 @@ export default function AdminPage() {
           )
         );
       } catch (error) {
-        clearAuthSession();
         setErrorMessage(error.message || "Unable to load the admin dashboard.");
-        router.replace("/login");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadDashboard();
-  }, [router]);
+  }, [isCheckingAuth, token]);
 
   function handleVerificationChange(makerId, field, value) {
     setVerificationDrafts((current) => ({
@@ -112,9 +82,7 @@ export default function AdminPage() {
   }
 
   async function handleVerificationSave(makerId) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -143,9 +111,7 @@ export default function AdminPage() {
   }
 
   async function handleUserStatusToggle(managedUser) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -169,9 +135,7 @@ export default function AdminPage() {
   }
 
   async function handleRemoveProduct(productId) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -193,9 +157,7 @@ export default function AdminPage() {
   }
 
   async function handleRemoveReview(reviewId) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -214,17 +176,14 @@ export default function AdminPage() {
     }
   }
 
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
       <AppShell
         eyebrow="Admin Dashboard"
         title="Marketplace moderation"
         description="Review users, products, verifications, and reviews."
-        navItems={[
-          { href: "/admin", label: "Moderation", caption: "Users and content", active: true },
-          { href: "/products", label: "Marketplace", caption: "Public view" },
-        ]}
-        actions={[{ type: "logout", redirectTo: "/login" }]}
+        navItems={getAdminNav("moderation")}
+        actions={getLogoutAction()}
       >
         <section className="card content-card">
           <LoadingState title="Loading admin dashboard..." description="Fetching moderation data." />
@@ -238,11 +197,8 @@ export default function AdminPage() {
       eyebrow="Admin Dashboard"
       title={user ? `${user.full_name}'s moderation console` : "Marketplace moderation"}
       description="Review users, products, verification requests, and customer feedback."
-      navItems={[
-        { href: "/admin", label: "Moderation", caption: "Users and content", active: true },
-        { href: "/products", label: "Marketplace", caption: "Public view" },
-      ]}
-      actions={[{ type: "logout", redirectTo: "/login" }]}
+      navItems={getAdminNav("moderation")}
+      actions={getLogoutAction()}
     >
       <section className="card content-card maker-dashboard-card admin-dashboard-card">
         <div className="section-header">

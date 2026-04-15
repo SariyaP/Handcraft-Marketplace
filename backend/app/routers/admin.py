@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -27,17 +25,10 @@ from app.services.admin import (
 )
 from app.services.auth import get_user_by_id
 from app.utils.dependencies import require_roles
+from app.utils.presenters import maker_display_name
 
 
 router = APIRouter(tags=["admin"])
-
-
-def _maker_display_name(user) -> str:
-    maker_profile = getattr(user, "maker_profile", None)
-    if maker_profile and maker_profile.shop_name:
-        return maker_profile.shop_name
-    return user.full_name
-
 
 @router.get(
     "/admin/users",
@@ -115,7 +106,7 @@ def read_admin_products(
             stock_quantity=item.stock_quantity,
             is_active=item.is_active,
             maker_id=item.maker_id,
-            maker_name=_maker_display_name(item.maker),
+            maker_name=maker_display_name(item.maker),
             created_at=item.created_at,
             updated_at=item.updated_at,
         )

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends
 
 from app.database import get_db
@@ -11,6 +9,7 @@ from app.schemas.marketplace import (
 )
 from app.services.marketplace import get_product_order_overview
 from app.utils.dependencies import require_roles
+from app.utils.presenters import maker_display_name
 
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -37,12 +36,7 @@ def read_customer_overview(
 
     serialized_orders = []
     for order in orders:
-        maker_profile = getattr(order.maker, "maker_profile", None)
-        maker_name = (
-            maker_profile.shop_name
-            if maker_profile and maker_profile.shop_name
-            else order.maker.full_name
-        )
+        maker_name = maker_display_name(order.maker)
         updates = sorted(
             order.progress_updates,
             key=lambda item: (item.created_at, item.id),

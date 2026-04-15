@@ -15,6 +15,10 @@ export async function fetchProducts(filters = {}) {
     searchParams.set("maker_id", filters.makerId);
   }
 
+  if (filters.makerName) {
+    searchParams.set("maker_name", filters.makerName);
+  }
+
   const queryString = searchParams.toString();
   const url = queryString
     ? getApiUrl(`/products?${queryString}`)

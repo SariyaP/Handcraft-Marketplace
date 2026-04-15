@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -16,8 +14,6 @@ from app.schemas.marketplace import (
     ProductDetailResponse,
     ProductListItem,
     ProductOrderResponse,
-    ProductOrderSelectionRead,
-    ReviewListItem,
 )
 from app.services.marketplace import (
     create_maker_product,
@@ -31,51 +27,15 @@ from app.services.marketplace import (
     update_maker_product,
 )
 from app.utils.dependencies import require_roles
+from app.utils.presenters import (
+    serialize_product_list_item,
+    serialize_product_order_response,
+    serialize_review_item,
+)
 
 
 router = APIRouter(prefix="/products", tags=["products"])
 maker_router = APIRouter(prefix="/maker", tags=["maker-products"])
-
-
-def _maker_name_for_product(product) -> str:
-    maker_profile = getattr(product.maker, "maker_profile", None)
-    if maker_profile and maker_profile.shop_name:
-        return maker_profile.shop_name
-
-    return product.maker.full_name
-
-
-def _serialize_product(product) -> ProductListItem:
-    return ProductListItem(
-        id=product.id,
-        name=product.title,
-        description=product.description,
-        price=product.price,
-        maker_id=product.maker_id,
-        maker_name=_maker_name_for_product(product),
-    )
-
-
-def _serialize_order(order) -> ProductOrderResponse:
-    maker_profile = getattr(order.maker, "maker_profile", None)
-    maker_name = maker_profile.shop_name if maker_profile and maker_profile.shop_name else order.maker.full_name
-    return ProductOrderResponse(
-        id=order.id,
-        product_id=order.product_id,
-        product_name=order.product.title,
-        quantity=order.quantity,
-        total_price=order.total_price,
-        status=order.status,
-        maker_name=maker_name,
-        selections=[
-            ProductOrderSelectionRead(
-                option_name=selection.option.name,
-                choice_label=selection.choice.label,
-            )
-            for selection in order.selections
-        ],
-    )
-
 
 def _serialize_maker_product(product) -> MakerProductResponse:
     return MakerProductResponse(
@@ -95,6 +55,7 @@ def read_products(
     min_price: Decimal | None = Query(default=None, ge=0),
     max_price: Decimal | None = Query(default=None, ge=0),
     maker_id: int | None = Query(default=None, ge=1),
+    maker_name: str | None = Query(default=None, min_length=1),
     db: Session = Depends(get_db),
 ) -> list[ProductListItem]:
     products = list_products(
@@ -102,8 +63,9 @@ def read_products(
         min_price=min_price,
         max_price=max_price,
         maker_id=maker_id,
+        maker_name=maker_name,
     )
-    return [_serialize_product(product) for product in products]
+    return [serialize_product_list_item(product) for product in products]
 
 
 @router.get(
@@ -120,7 +82,7 @@ def read_product(product_id: int, db: Session = Depends(get_db)) -> ProductDetai
         )
 
     return ProductDetailResponse(
-        **_serialize_product(product).model_dump(),
+        **serialize_product_list_item(product).model_dump(),
         stock_quantity=product.stock_quantity,
         is_active=product.is_active,
         customization_options=[
@@ -140,19 +102,7 @@ def read_product(product_id: int, db: Session = Depends(get_db)) -> ProductDetai
             for option in product.customization_options
         ],
         reviews=[
-            ReviewListItem(
-                id=review.id,
-                rating=review.rating,
-                comment=review.comment,
-                customer_id=review.customer_id,
-                customer_name=review.customer.full_name,
-                product_id=review.product_id,
-                product_name=product.title,
-                commission_id=review.commission_id,
-                commission_title=review.commission.title if review.commission else None,
-                created_at=review.created_at,
-                updated_at=review.updated_at,
-            )
+            serialize_review_item(review)
             for review in list_product_reviews(db, product.id)
         ],
         created_at=product.created_at,
@@ -207,7 +157,7 @@ def create_order_for_product(
         quantity=payload.quantity,
         selections=resolved_selections,
     )
-    return _serialize_order(order)
+    return serialize_product_order_response(order)
 
 
 @router.post(

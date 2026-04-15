@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import LogoutButton from "../auth/LogoutButton";
+import Icon from "./Icon";
 
 export default function AppShell({
   eyebrow,
@@ -29,12 +30,18 @@ export default function AppShell({
                 className={item.active ? "sidebar-link sidebar-link-active" : "sidebar-link"}
                 href={item.href}
               >
-                <span className="sidebar-link-label">{item.label}</span>
+                <span className="sidebar-link-label">
+                  {item.icon ? <Icon name={item.icon} /> : null}
+                  <span>{item.label}</span>
+                </span>
                 {item.caption ? <small>{item.caption}</small> : null}
               </Link>
             ) : (
               <div key={item.label} className="sidebar-link sidebar-link-static">
-                <span className="sidebar-link-label">{item.label}</span>
+                <span className="sidebar-link-label">
+                  {item.icon ? <Icon name={item.icon} /> : null}
+                  <span>{item.label}</span>
+                </span>
                 {item.caption ? <small>{item.caption}</small> : null}
               </div>
             )
@@ -55,6 +62,7 @@ export default function AppShell({
                 className={action.className || "ghost-link sidebar-action-button"}
                 href={action.href}
               >
+                {action.icon ? <Icon name={action.icon} className="ui-icon ui-icon-inline" /> : null}
                 {action.label}
               </Link>
             )

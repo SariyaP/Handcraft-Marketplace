@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from decimal import Decimal
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import (
@@ -37,6 +35,7 @@ def list_products(
     min_price: Decimal | None = None,
     max_price: Decimal | None = None,
     maker_id: int | None = None,
+    maker_name: str | None = None,
 ) -> list[Product]:
     statement = _base_product_query().where(Product.is_active.is_(True))
 
@@ -48,6 +47,17 @@ def list_products(
 
     if maker_id is not None:
         statement = statement.where(Product.maker_id == maker_id)
+
+    if maker_name:
+        pattern = f"%{maker_name.strip().lower()}%"
+        statement = statement.where(
+            or_(
+                func.lower(User.full_name).like(pattern),
+                Product.maker.has(
+                    User.maker_profile.has(func.lower(MakerProfile.shop_name).like(pattern))
+                ),
+            )
+        )
 
     statement = statement.order_by(Product.created_at.desc(), Product.id.desc())
     return list(db.scalars(statement).unique().all())

@@ -1,82 +1,47 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import AppShell from "../../../components/ui/AppShell";
 import { EmptyState, LoadingState } from "../../../components/ui/StateCard";
-import {
-  clearAuthSession,
-  fetchCurrentUser,
-  getStoredToken,
-  getStoredUser,
-  hasRequiredRole,
-  persistAuthSession,
-} from "../../../lib/auth";
+import { getLogoutAction, getMakerNav } from "../../../lib/navigation";
+import { useRequireRole } from "../../../lib/useRequireRole";
 import { fetchMakerReviews } from "../../../lib/reviews";
 
 export default function MakerReviewsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, token, isCheckingAuth } = useRequireRole("maker");
   const [reviews, setReviews] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = getStoredToken();
-    const cachedUser = getStoredUser();
-
-    if (!token || !cachedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!hasRequiredRole(cachedUser, ["maker"])) {
-      router.replace("/products");
+    if (isCheckingAuth || !token) {
       return;
     }
 
     async function loadPage() {
+      setIsLoading(true);
       try {
-        const currentUser = await fetchCurrentUser(token);
-        if (!hasRequiredRole(currentUser, ["maker"])) {
-          router.replace("/products");
-          return;
-        }
-
-        persistAuthSession({
-          access_token: token,
-          user: currentUser,
-        });
-        setUser(currentUser);
-
         const data = await fetchMakerReviews(token);
         setReviews(data);
       } catch (error) {
-        clearAuthSession();
         setErrorMessage(error.message || "Unable to load reviews.");
-        router.replace("/login");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadPage();
-  }, [router]);
+  }, [isCheckingAuth, token]);
 
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
       <AppShell
         eyebrow="Maker Reviews"
         title="Customer feedback"
         description="Read reviews on your products and completed commissions."
-        navItems={[
-          { href: "/maker", label: "Products", caption: "Catalog management" },
-          { href: "/maker/profile", label: "Profile", caption: "Shop details" },
-          { href: "/maker/commissions", label: "Commissions", caption: "Requests and WIP" },
-          { href: "/maker/reviews", label: "Reviews", caption: "Customer feedback", active: true },
-        ]}
-        actions={[{ type: "logout", redirectTo: "/login" }]}
+        navItems={getMakerNav("reviews")}
+        actions={getLogoutAction()}
       >
         <section className="card content-card">
           <LoadingState
@@ -93,13 +58,8 @@ export default function MakerReviewsPage() {
       eyebrow="Maker Reviews"
       title={user ? `${user.full_name}'s feedback` : "Customer feedback"}
       description="Read customer reviews for your products and completed commissions."
-      navItems={[
-        { href: "/maker", label: "Products", caption: "Catalog management" },
-        { href: "/maker/profile", label: "Profile", caption: "Shop details" },
-        { href: "/maker/commissions", label: "Commissions", caption: "Requests and WIP" },
-        { href: "/maker/reviews", label: "Reviews", caption: "Customer feedback", active: true },
-      ]}
-      actions={[{ type: "logout", redirectTo: "/login" }]}
+      navItems={getMakerNav("reviews")}
+      actions={getLogoutAction()}
     >
       <section className="card content-card maker-dashboard-card">
         <div className="section-header">

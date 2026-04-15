@@ -1,19 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import AppShell from "../../components/ui/AppShell";
 import { EmptyState, LoadingState } from "../../components/ui/StateCard";
-import {
-  clearAuthSession,
-  fetchCurrentUser,
-  getStoredToken,
-  getStoredUser,
-  hasRequiredRole,
-  persistAuthSession,
-} from "../../lib/auth";
+import { getLogoutAction, getMakerNav } from "../../lib/navigation";
+import { useRequireRole } from "../../lib/useRequireRole";
 import {
   createMakerProduct,
   deleteMakerProduct,
@@ -121,8 +113,7 @@ function ProductForm({
 }
 
 export default function MakerPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, token, isCheckingAuth } = useRequireRole("maker");
   const [products, setProducts] = useState([]);
   const [formValues, setFormValues] = useState(initialFormValues);
   const [editingProductId, setEditingProductId] = useState(null);
@@ -133,50 +124,26 @@ export default function MakerPage() {
   const [isDeletingId, setIsDeletingId] = useState(null);
 
   useEffect(() => {
-    const token = getStoredToken();
-    const cachedUser = getStoredUser();
-
-    if (!token || !cachedUser) {
-      router.replace("/login");
+    if (isCheckingAuth || !token) {
       return;
     }
 
-    if (!hasRequiredRole(cachedUser, ["maker"])) {
-      router.replace("/products");
-      return;
-    }
-
-    setUser(cachedUser);
     async function loadDashboard() {
       setIsLoading(true);
       setErrorMessage("");
 
       try {
-        const currentUser = await fetchCurrentUser(token);
-        if (!hasRequiredRole(currentUser, ["maker"])) {
-          router.replace("/products");
-          return;
-        }
-
-        persistAuthSession({
-          access_token: token,
-          user: currentUser,
-        });
-        setUser(currentUser);
-
         const makerProducts = await fetchMakerProducts(token);
         setProducts(makerProducts);
       } catch (error) {
-        clearAuthSession();
         setErrorMessage(error.message || "Unable to load the maker dashboard.");
-        router.replace("/login");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadDashboard();
-  }, [router]);
+  }, [isCheckingAuth, token]);
 
   function handleChange(event) {
     const { name, value, type, checked } = event.target;
@@ -206,9 +173,7 @@ export default function MakerPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -244,9 +209,7 @@ export default function MakerPage() {
   }
 
   async function handleDelete(productId) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -268,19 +231,14 @@ export default function MakerPage() {
     }
   }
 
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
       <AppShell
         eyebrow="Maker Dashboard"
         title="Maker workspace"
         description="Manage products and shop activity."
-        navItems={[
-          { href: "/maker", label: "Products", caption: "Catalog management", active: true },
-          { href: "/maker/profile", label: "Profile", caption: "Shop details" },
-          { href: "/maker/commissions", label: "Commissions", caption: "Requests and WIP" },
-          { href: "/maker/reviews", label: "Reviews", caption: "Customer feedback" },
-        ]}
-        actions={[{ type: "logout", redirectTo: "/login" }]}
+        navItems={getMakerNav("products")}
+        actions={getLogoutAction()}
       >
         <section className="card content-card">
           <LoadingState
@@ -297,13 +255,8 @@ export default function MakerPage() {
       eyebrow="Maker Dashboard"
       title={user ? `${user.full_name}'s workspace` : "Maker workspace"}
       description="Create listings, keep your catalog updated, and manage your shop."
-      navItems={[
-        { href: "/maker", label: "Products", caption: "Catalog management", active: true },
-        { href: "/maker/profile", label: "Profile", caption: "Shop details" },
-        { href: "/maker/commissions", label: "Commissions", caption: "Requests and WIP" },
-        { href: "/maker/reviews", label: "Reviews", caption: "Customer feedback" },
-      ]}
-      actions={[{ type: "logout", redirectTo: "/login" }]}
+      navItems={getMakerNav("products")}
+      actions={getLogoutAction()}
     >
       <section className="card content-card maker-dashboard-card">
         <div className="section-header">

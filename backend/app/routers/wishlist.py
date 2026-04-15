@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -12,30 +10,10 @@ from app.services.marketplace import (
     remove_from_wishlist,
 )
 from app.utils.dependencies import require_roles
+from app.utils.presenters import serialize_wishlist_item
 
 
 router = APIRouter(tags=["wishlist"])
-
-
-def _maker_name_for_product(product) -> str:
-    maker_profile = getattr(product.maker, "maker_profile", None)
-    if maker_profile and maker_profile.shop_name:
-        return maker_profile.shop_name
-    return product.maker.full_name
-
-
-def _serialize_wishlist_item(item) -> WishlistItemResponse:
-    return WishlistItemResponse(
-        id=item.id,
-        product_id=item.product_id,
-        product_name=item.product.title,
-        product_description=item.product.description,
-        price=item.product.price,
-        maker_id=item.product.maker_id,
-        maker_name=_maker_name_for_product(item.product),
-        created_at=item.created_at,
-    )
-
 
 @router.get(
     "/wishlist",
@@ -47,7 +25,7 @@ def read_wishlist(
     user=Depends(require_roles("customer")),
 ) -> list[WishlistItemResponse]:
     items = list_user_wishlist(db, user.id)
-    return [_serialize_wishlist_item(item) for item in items]
+    return [serialize_wishlist_item(item) for item in items]
 
 
 @router.post(
@@ -74,7 +52,7 @@ def create_wishlist_item(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to create wishlist item.",
         )
-    return _serialize_wishlist_item(item)
+    return serialize_wishlist_item(item)
 
 
 @router.delete(

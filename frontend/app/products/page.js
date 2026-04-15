@@ -14,6 +14,11 @@ import {
   persistAuthSession,
 } from "../../lib/auth";
 import {
+  getCustomerNav,
+  getGuestMarketplaceNav,
+  getLogoutAction,
+} from "../../lib/navigation";
+import {
   addWishlistItem,
   fetchCustomerDashboard,
   fetchProducts,
@@ -25,6 +30,7 @@ const initialFilters = {
   minPrice: "",
   maxPrice: "",
   makerId: "",
+  makerName: "",
 };
 
 function ProductCard({
@@ -294,20 +300,12 @@ export default function ProductsPage() {
   }
 
   const navItems = user && hasRequiredRole(user, ["customer"])
-    ? [
-        { href: "/products", label: "Marketplace", caption: "Browse and order", active: true },
-        { href: "/wishlist", label: "Wishlist", caption: "Saved items" },
-        { href: "/commissions", label: "Commissions", caption: "Custom requests" },
-      ]
-    : [
-        { href: "/products", label: "Marketplace", caption: "Public catalog", active: true },
-        { href: "/login", label: "Login", caption: "Customer or maker access" },
-        { href: "/register", label: "Register", caption: "Create an account" },
-      ];
+    ? getCustomerNav("marketplace")
+    : getGuestMarketplaceNav("marketplace");
 
   const shellActions = user
-    ? [{ type: "logout", redirectTo: "/login" }]
-    : [{ href: "/login", label: "Login", className: "primary-link sidebar-action-button" }];
+    ? getLogoutAction()
+    : [{ href: "/login", label: "Login", icon: "login", className: "primary-link sidebar-action-button" }];
 
   return (
     <AppShell
@@ -393,6 +391,17 @@ export default function ProductsPage() {
                   value={filters.makerId}
                   onChange={handleChange}
                   className="form-input"
+                />
+              </label>
+              <label className="form-field" htmlFor="makerName">
+                <span>Maker name</span>
+                <input
+                  id="makerName"
+                  name="makerName"
+                  value={filters.makerName}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Search by maker or shop"
                 />
               </label>
               <div className="products-filter-actions">

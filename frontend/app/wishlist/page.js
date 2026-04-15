@@ -2,74 +2,42 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import AppShell from "../../components/ui/AppShell";
 import { EmptyState, LoadingState } from "../../components/ui/StateCard";
-import {
-  clearAuthSession,
-  fetchCurrentUser,
-  getStoredToken,
-  getStoredUser,
-  hasRequiredRole,
-  persistAuthSession,
-} from "../../lib/auth";
+import { getCustomerNav, getLogoutAction } from "../../lib/navigation";
+import { useRequireRole } from "../../lib/useRequireRole";
 import { fetchWishlist, removeWishlistItem } from "../../lib/products";
 
 export default function WishlistPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, token, isCheckingAuth } = useRequireRole("customer");
   const [items, setItems] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [busyProductId, setBusyProductId] = useState(null);
 
   useEffect(() => {
-    const token = getStoredToken();
-    const cachedUser = getStoredUser();
-
-    if (!token || !cachedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!hasRequiredRole(cachedUser, ["customer"])) {
-      router.replace("/products");
+    if (isCheckingAuth || !token) {
       return;
     }
 
     async function loadPage() {
+      setIsLoading(true);
       try {
-        const currentUser = await fetchCurrentUser(token);
-        if (!hasRequiredRole(currentUser, ["customer"])) {
-          router.replace("/products");
-          return;
-        }
-
-        persistAuthSession({
-          access_token: token,
-          user: currentUser,
-        });
-        setUser(currentUser);
-
         const wishlistItems = await fetchWishlist(token);
         setItems(wishlistItems);
       } catch (error) {
-        clearAuthSession();
         setErrorMessage(error.message || "Unable to load wishlist.");
-        router.replace("/login");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadPage();
-  }, [router]);
+  }, [isCheckingAuth, token]);
 
   async function handleRemove(productId) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -86,18 +54,14 @@ export default function WishlistPage() {
     }
   }
 
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
       <AppShell
         eyebrow="Wishlist"
         title="Saved products"
         description="Your saved handmade items."
-        navItems={[
-          { href: "/products", label: "Marketplace", caption: "Browse products" },
-          { href: "/wishlist", label: "Wishlist", caption: "Saved items", active: true },
-          { href: "/commissions", label: "Commissions", caption: "Custom requests" },
-        ]}
-        actions={[{ type: "logout", redirectTo: "/login" }]}
+        navItems={getCustomerNav("wishlist")}
+        actions={getLogoutAction()}
       >
         <section className="card content-card">
           <LoadingState title="Loading wishlist..." description="Fetching your saved products." />
@@ -111,12 +75,8 @@ export default function WishlistPage() {
       eyebrow="Wishlist"
       title={user ? `${user.full_name}'s saved products` : "Saved products"}
       description="Review products you saved and return to the catalog when ready."
-      navItems={[
-        { href: "/products", label: "Marketplace", caption: "Browse products" },
-        { href: "/wishlist", label: "Wishlist", caption: "Saved items", active: true },
-        { href: "/commissions", label: "Commissions", caption: "Custom requests" },
-      ]}
-      actions={[{ type: "logout", redirectTo: "/login" }]}
+      navItems={getCustomerNav("wishlist")}
+      actions={getLogoutAction()}
     >
       <section className="card content-card products-page-card">
         <div className="section-header">

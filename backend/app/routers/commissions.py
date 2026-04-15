@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -23,55 +21,14 @@ from app.services.marketplace import (
     update_commission_status,
 )
 from app.utils.dependencies import require_roles
+from app.utils.presenters import (
+    serialize_commission_item,
+    serialize_customer_commission_item,
+    serialize_wip_update,
+)
 
 
 router = APIRouter(tags=["commissions"])
-
-
-def _maker_display_name(user) -> str:
-    maker_profile = getattr(user, "maker_profile", None)
-    if maker_profile and maker_profile.shop_name:
-        return maker_profile.shop_name
-    return user.full_name
-
-
-def _serialize_commission(commission) -> CommissionListItem:
-    return CommissionListItem(
-        id=commission.id,
-        title=commission.title,
-        description=commission.description,
-        customization_notes=commission.customization_notes,
-        budget=commission.budget,
-        status=commission.status,
-        customer_id=commission.customer_id,
-        customer_name=commission.customer.full_name,
-        maker_id=commission.maker_id,
-        maker_name=_maker_display_name(commission.maker),
-        wip_updates=[
-            WipUpdateRead(
-                id=update.id,
-                commission_id=update.commission_id,
-                message=update.message,
-                image_url=update.image_url,
-                created_at=update.created_at,
-            )
-            for update in sorted(
-                commission.wip_updates,
-                key=lambda item: (item.created_at, item.id),
-                reverse=True,
-            )
-        ],
-        created_at=commission.created_at,
-        updated_at=commission.updated_at,
-    )
-
-
-def _serialize_customer_commission(commission, has_review: bool) -> CommissionWithReviewItem:
-    return CommissionWithReviewItem(
-        **_serialize_commission(commission).model_dump(),
-        has_review=has_review,
-    )
-
 
 @router.post(
     "/commissions",
@@ -103,7 +60,7 @@ def create_commission_request(
 
     commission.customer = user
     commission.maker = maker
-    return _serialize_commission(commission)
+    return serialize_commission_item(commission)
 
 
 @router.get(
@@ -117,7 +74,7 @@ def read_customer_commissions(
 ) -> list[CommissionWithReviewItem]:
     commissions = list_customer_commissions(db, user.id)
     return [
-        _serialize_customer_commission(
+        serialize_customer_commission_item(
             commission,
             has_review=get_commission_review_by_customer(db, user.id, commission.id) is not None,
         )
@@ -135,7 +92,7 @@ def read_maker_commissions(
     user=Depends(require_roles("maker")),
 ) -> list[CommissionListItem]:
     commissions = list_maker_commissions(db, user.id)
-    return [_serialize_commission(commission) for commission in commissions]
+    return [serialize_commission_item(commission) for commission in commissions]
 
 
 @router.put(
@@ -164,7 +121,7 @@ def update_maker_commission(
             detail=str(exc),
         ) from exc
 
-    return _serialize_commission(updated)
+    return serialize_commission_item(updated)
 
 
 @router.post(
@@ -192,10 +149,4 @@ def create_commission_wip_update(
         message=payload.message,
         image_url=payload.image_url,
     )
-    return WipUpdateRead(
-        id=update.id,
-        commission_id=update.commission_id,
-        message=update.message,
-        image_url=update.image_url,
-        created_at=update.created_at,
-    )
+    return serialize_wip_update(update)

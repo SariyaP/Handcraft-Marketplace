@@ -2,17 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
-import LogoutButton from "../../../components/auth/LogoutButton";
-import {
-  clearAuthSession,
-  fetchCurrentUser,
-  getStoredToken,
-  getStoredUser,
-  hasRequiredRole,
-  persistAuthSession,
-} from "../../../lib/auth";
+import AppShell from "../../../components/ui/AppShell";
+import { EmptyState, LoadingState } from "../../../components/ui/StateCard";
+import { getLogoutAction, getMakerNav } from "../../../lib/navigation";
+import { useRequireRole } from "../../../lib/useRequireRole";
 import {
   createCommissionWipUpdate,
   fetchMakerCommissions,
@@ -22,8 +16,7 @@ import {
 const statusOptions = ["pending", "accepted", "rejected", "in_progress", "completed"];
 
 export default function MakerCommissionsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, token, isCheckingAuth } = useRequireRole("maker");
   const [commissions, setCommissions] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [message, setMessage] = useState("");
@@ -33,51 +26,27 @@ export default function MakerCommissionsPage() {
   const [postingUpdateId, setPostingUpdateId] = useState(null);
 
   useEffect(() => {
-    const token = getStoredToken();
-    const cachedUser = getStoredUser();
-
-    if (!token || !cachedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!hasRequiredRole(cachedUser, ["maker"])) {
-      router.replace("/products");
+    if (isCheckingAuth || !token) {
       return;
     }
 
     async function loadPage() {
+      setIsLoading(true);
       try {
-        const currentUser = await fetchCurrentUser(token);
-        if (!hasRequiredRole(currentUser, ["maker"])) {
-          router.replace("/products");
-          return;
-        }
-
-        persistAuthSession({
-          access_token: token,
-          user: currentUser,
-        });
-        setUser(currentUser);
-
         const data = await fetchMakerCommissions(token);
         setCommissions(data);
       } catch (error) {
-        clearAuthSession();
         setErrorMessage(error.message || "Unable to load incoming commissions.");
-        router.replace("/login");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadPage();
-  }, [router]);
+  }, [isCheckingAuth, token]);
 
   async function handleStatusChange(commissionId, nextStatus) {
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -115,9 +84,7 @@ export default function MakerCommissionsPage() {
   async function handlePostUpdate(event, commissionId) {
     event.preventDefault();
 
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -150,32 +117,36 @@ export default function MakerCommissionsPage() {
     }
   }
 
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
-      <main className="page">
-        <section className="card dashboard-card">
-          <p className="eyebrow">Loading</p>
-          <h1>Loading incoming commissions...</h1>
-          <p>Fetching requests from customers.</p>
+      <AppShell
+        eyebrow="Maker Commissions"
+        title="Incoming requests"
+        description="Review customer requests, post WIP updates, and manage status."
+        navItems={getMakerNav("commissions")}
+        actions={getLogoutAction()}
+      >
+        <section className="card content-card">
+          <LoadingState title="Loading incoming commissions..." description="Fetching requests from customers." />
         </section>
-      </main>
+      </AppShell>
     );
   }
 
   return (
-    <main className="page">
-      <section className="card maker-dashboard-card">
-        <div className="products-header">
+    <AppShell
+      eyebrow="Maker Commissions"
+      title={user ? `${user.full_name}'s commission inbox` : "Incoming commissions"}
+      description="Review customer requests, accept or reject them, and update progress status."
+      navItems={getMakerNav("commissions")}
+      actions={getLogoutAction()}
+    >
+      <section className="card content-card maker-dashboard-card">
+        <div className="section-header">
           <div>
-            <p className="eyebrow">Maker Commissions</p>
-            <h1>{user ? `${user.full_name}'s commission inbox` : "Incoming commissions"}</h1>
+            <p className="eyebrow">Requests</p>
+            <h2>{user ? `${user.full_name}'s commission inbox` : "Incoming commissions"}</h2>
             <p>Review customer requests, accept or reject them, and update progress status.</p>
-          </div>
-          <div className="dashboard-actions">
-            <Link className="ghost-link" href="/maker">
-              Back to dashboard
-            </Link>
-            <LogoutButton />
           </div>
         </div>
 
@@ -186,9 +157,7 @@ export default function MakerCommissionsPage() {
           <p className="eyebrow">Incoming Requests</p>
           <h2>Customer commissions</h2>
           {commissions.length === 0 ? (
-            <div className="products-empty-state">
-              <p>No incoming commissions yet.</p>
-            </div>
+            <EmptyState eyebrow="No Requests" title="No incoming commissions yet" description="Customer requests will appear here once they submit a commission." />
           ) : (
             <div className="maker-product-list">
               {commissions.map((commission) => (
@@ -295,6 +264,6 @@ export default function MakerCommissionsPage() {
           )}
         </section>
       </section>
-    </main>
+    </AppShell>
   );
 }

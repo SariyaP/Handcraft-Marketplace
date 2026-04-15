@@ -46,11 +46,15 @@ a {
   grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .app-sidebar {
   position: sticky;
   top: 2rem;
+  align-self: start;
   display: grid;
   gap: 1.25rem;
   padding: 1.4rem;
@@ -58,6 +62,7 @@ a {
   border-radius: 24px;
   background: rgba(255, 250, 243, 0.92);
   box-shadow: var(--shadow);
+  animation: fadeSlideIn 420ms ease both;
 }
 
 .app-sidebar-brand,
@@ -70,6 +75,7 @@ a {
 
 .app-content {
   min-width: 0;
+  animation: fadeSlideIn 520ms ease both;
 }
 
 .sidebar-link {
@@ -96,6 +102,9 @@ a {
 }
 
 .sidebar-link-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
   font-weight: 700;
 }
 
@@ -106,6 +115,18 @@ a {
 
 .sidebar-action-button {
   width: 100%;
+  gap: 0.6rem;
+}
+
+.ui-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.ui-icon-inline {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .card {
@@ -116,6 +137,7 @@ a {
   border-radius: 20px;
   padding: 2rem;
   box-shadow: var(--shadow);
+  animation: fadeSlideIn 500ms ease both;
 }
 
 .eyebrow {
@@ -330,6 +352,14 @@ p {
   border-radius: 24px;
 }
 
+.page {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+}
+
 .landing-card {
   display: grid;
   gap: 1.25rem;
@@ -393,7 +423,7 @@ p {
 
 .products-filter-bar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 1rem;
   align-items: end;
 }
@@ -425,6 +455,14 @@ p {
 .admin-section,
 .state-card {
   box-shadow: 0 12px 32px rgba(79, 47, 23, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.product-card-elevated:hover,
+.maker-product-item:hover,
+.review-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(79, 47, 23, 0.11);
 }
 
 .product-image-placeholder,
@@ -445,6 +483,18 @@ p {
   font-size: 1.1rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+
+.product-image-placeholder::after,
+.product-detail-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 25%, rgba(255, 255, 255, 0.28) 50%, transparent 75%);
+  transform: translateX(-120%);
+  animation: shimmerSweep 5.4s ease-in-out infinite;
 }
 
 .product-card-body,
@@ -919,6 +969,28 @@ p {
   50% {
     transform: translateY(-2px);
     opacity: 1;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmerSweep {
+  0%,
+  75%,
+  100% {
+    transform: translateX(-120%);
+  }
+  35% {
+    transform: translateX(120%);
   }
 }
 

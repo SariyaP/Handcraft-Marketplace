@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -11,25 +9,10 @@ from app.services.marketplace import (
     update_maker_profile,
 )
 from app.utils.dependencies import require_roles
+from app.utils.presenters import serialize_maker_profile_response
 
 
 router = APIRouter(tags=["makers"])
-
-
-def _serialize_maker_profile(user, profile) -> MakerProfileResponse:
-    return MakerProfileResponse(
-        id=profile.id,
-        user_id=user.id,
-        full_name=user.full_name,
-        shop_name=profile.shop_name,
-        bio=profile.bio,
-        specialization=profile.specialization,
-        profile_image_url=profile.profile_image_url,
-        verification_status=profile.verification_status,
-        created_at=profile.created_at,
-        updated_at=profile.updated_at,
-    )
-
 
 @router.get(
     "/maker/profile",
@@ -41,7 +24,7 @@ def read_own_maker_profile(
     user=Depends(require_roles("maker")),
 ) -> MakerProfileResponse:
     profile = user.maker_profile or get_or_create_maker_profile(db, user)
-    return _serialize_maker_profile(user, profile)
+    return serialize_maker_profile_response(user, profile)
 
 
 @router.put(
@@ -62,7 +45,7 @@ def update_own_maker_profile(
         specialization=payload.specialization,
         profile_image_url=payload.profile_image_url,
     )
-    return _serialize_maker_profile(user, profile)
+    return serialize_maker_profile_response(user, profile)
 
 
 @router.get(
@@ -82,4 +65,4 @@ def read_public_maker_profile(
         )
 
     user, profile = result
-    return _serialize_maker_profile(user, profile)
+    return serialize_maker_profile_response(user, profile)

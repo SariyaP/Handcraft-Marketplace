@@ -2,18 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import AppShell from "../../components/ui/AppShell";
 import { EmptyState, LoadingState } from "../../components/ui/StateCard";
-import {
-  clearAuthSession,
-  fetchCurrentUser,
-  getStoredToken,
-  getStoredUser,
-  hasRequiredRole,
-  persistAuthSession,
-} from "../../lib/auth";
+import { getCustomerNav, getLogoutAction } from "../../lib/navigation";
+import { useRequireRole } from "../../lib/useRequireRole";
 import { createCommission, fetchCustomerCommissions } from "../../lib/commissions";
 import { createCommissionReview } from "../../lib/reviews";
 
@@ -26,8 +19,7 @@ const initialValues = {
 };
 
 export default function CommissionsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const { user, token, isCheckingAuth } = useRequireRole("customer");
   const [values, setValues] = useState(initialValues);
   const [commissions, setCommissions] = useState([]);
   const [reviewDrafts, setReviewDrafts] = useState({});
@@ -38,19 +30,6 @@ export default function CommissionsPage() {
   const [submittingReviewId, setSubmittingReviewId] = useState(null);
 
   useEffect(() => {
-    const token = getStoredToken();
-    const cachedUser = getStoredUser();
-
-    if (!token || !cachedUser) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!hasRequiredRole(cachedUser, ["customer"])) {
-      router.replace("/products");
-      return;
-    }
-
     const prefilledMakerId =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("makerId")
@@ -61,34 +40,27 @@ export default function CommissionsPage() {
         maker_id: prefilledMakerId,
       }));
     }
+  }, []);
+
+  useEffect(() => {
+    if (isCheckingAuth || !token) {
+      return;
+    }
 
     async function loadPage() {
+      setIsLoading(true);
       try {
-        const currentUser = await fetchCurrentUser(token);
-        if (!hasRequiredRole(currentUser, ["customer"])) {
-          router.replace("/products");
-          return;
-        }
-
-        persistAuthSession({
-          access_token: token,
-          user: currentUser,
-        });
-        setUser(currentUser);
-
         const data = await fetchCustomerCommissions(token);
         setCommissions(data);
       } catch (error) {
-        clearAuthSession();
         setErrorMessage(error.message || "Unable to load commissions.");
-        router.replace("/login");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadPage();
-  }, [router]);
+  }, [isCheckingAuth, token]);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -112,9 +84,7 @@ export default function CommissionsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -145,9 +115,7 @@ export default function CommissionsPage() {
 
   async function handleReviewSubmit(event, commissionId) {
     event.preventDefault();
-    const token = getStoredToken();
     if (!token) {
-      router.replace("/login");
       return;
     }
 
@@ -181,18 +149,14 @@ export default function CommissionsPage() {
     }
   }
 
-  if (isLoading) {
+  if (isCheckingAuth || isLoading) {
     return (
       <AppShell
         eyebrow="Commissions"
         title="Customer requests"
         description="Request custom work from makers and track progress."
-        navItems={[
-          { href: "/products", label: "Marketplace", caption: "Browse products" },
-          { href: "/wishlist", label: "Wishlist", caption: "Saved items" },
-          { href: "/commissions", label: "Commissions", caption: "Custom requests", active: true },
-        ]}
-        actions={[{ type: "logout", redirectTo: "/login" }]}
+        navItems={getCustomerNav("commissions")}
+        actions={getLogoutAction()}
       >
         <section className="card content-card">
           <LoadingState title="Loading commissions..." description="Fetching your commission requests." />
@@ -206,12 +170,8 @@ export default function CommissionsPage() {
       eyebrow="Commissions"
       title={user ? `${user.full_name}'s requests` : "Commission requests"}
       description="Request custom work from makers and track each request from submission to completion."
-      navItems={[
-        { href: "/products", label: "Marketplace", caption: "Browse products" },
-        { href: "/wishlist", label: "Wishlist", caption: "Saved items" },
-        { href: "/commissions", label: "Commissions", caption: "Custom requests", active: true },
-      ]}
-      actions={[{ type: "logout", redirectTo: "/login" }]}
+      navItems={getCustomerNav("commissions")}
+      actions={getLogoutAction()}
     >
       <section className="card content-card maker-dashboard-card">
         <div className="section-header">

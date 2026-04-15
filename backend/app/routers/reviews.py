@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -19,26 +17,10 @@ from app.services.marketplace import (
     list_product_reviews,
 )
 from app.utils.dependencies import require_roles
+from app.utils.presenters import serialize_review_item
 
 
 router = APIRouter(tags=["reviews"])
-
-
-def _serialize_review(review) -> ReviewListItem:
-    return ReviewListItem(
-        id=review.id,
-        rating=review.rating,
-        comment=review.comment,
-        customer_id=review.customer_id,
-        customer_name=review.customer.full_name,
-        product_id=review.product_id,
-        product_name=review.product.title if review.product else None,
-        commission_id=review.commission_id,
-        commission_title=review.commission.title if review.commission else None,
-        created_at=review.created_at,
-        updated_at=review.updated_at,
-    )
-
 
 @router.get(
     "/products/{product_id}/reviews",
@@ -47,7 +29,7 @@ def _serialize_review(review) -> ReviewListItem:
 )
 def read_product_reviews(product_id: int, db: Session = Depends(get_db)) -> list[ReviewListItem]:
     reviews = list_product_reviews(db, product_id)
-    return [_serialize_review(review) for review in reviews]
+    return [serialize_review_item(review) for review in reviews]
 
 
 @router.post(
@@ -82,7 +64,7 @@ def create_review_for_product(
 
     review.customer = user
     review.product = product
-    return _serialize_review(review)
+    return serialize_review_item(review)
 
 
 @router.post(
@@ -123,7 +105,7 @@ def create_review_for_commission(
 
     review.customer = user
     review.commission = commission
-    return _serialize_review(review)
+    return serialize_review_item(review)
 
 
 @router.get(
@@ -138,7 +120,7 @@ def read_maker_reviews(
     reviews = list_maker_reviews(db, user.id)
     return [
         MakerReviewListItem(
-            **_serialize_review(review).model_dump(),
+            **serialize_review_item(review).model_dump(),
             target_type="product" if review.product_id is not None else "commission",
         )
         for review in reviews
