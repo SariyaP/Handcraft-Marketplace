@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic import computed_field
+from sqlalchemy import inspect
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -61,6 +62,52 @@ def init_db() -> None:
 
     load_all_models()
     Base.metadata.create_all(bind=engine)
+    _migrate_maker_profiles()
+    _migrate_commissions()
+
+
+def _migrate_maker_profiles() -> None:
+    inspector = inspect(engine)
+    if "maker_profiles" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("maker_profiles")}
+    statements = []
+
+    if "specialization" not in existing_columns:
+        statements.append("ALTER TABLE maker_profiles ADD COLUMN specialization VARCHAR(150) NULL")
+    if "profile_image_url" not in existing_columns:
+        statements.append("ALTER TABLE maker_profiles ADD COLUMN profile_image_url VARCHAR(255) NULL")
+    if "verification_status" not in existing_columns:
+        statements.append(
+            "ALTER TABLE maker_profiles ADD COLUMN verification_status VARCHAR(50) NOT NULL DEFAULT 'unverified'"
+        )
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.exec_driver_sql(statement)
+
+
+def _migrate_commissions() -> None:
+    inspector = inspect(engine)
+    if "commissions" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("commissions")}
+    statements = []
+
+    if "customization_notes" not in existing_columns:
+        statements.append("ALTER TABLE commissions ADD COLUMN customization_notes TEXT NULL")
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.exec_driver_sql(statement)
 
 
 def get_db():

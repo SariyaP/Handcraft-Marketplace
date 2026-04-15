@@ -1,23 +1,14 @@
 "use client";
 
-import Link from "next/link";
-
-import LogoutButton from "../../components/auth/LogoutButton";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CustomerPage() {
-  return (
-    <main className="page">
-      <section className="card dashboard-card">
-        <p className="eyebrow">Customer Area</p>
-        <h1>Customer dashboard</h1>
-        <p>This is the customer landing page after authentication.</p>
-        <div className="dashboard-actions">
-          <Link className="primary-link" href="/home">
-            Back to home
-          </Link>
-          <LogoutButton />
-        </div>
-      </section>
-    </main>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/products");
+  }, [router]);
+
+  return null;
 }

@@ -4,18 +4,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import LogoutButton from "./LogoutButton";
 import {
   clearAuthSession,
   fetchCurrentUser,
+  fetchRoleDashboard,
   getRedirectPathForRole,
   getStoredToken,
   getStoredUser,
+  hasRequiredRole,
   persistAuthSession,
 } from "../../lib/auth";
 
-export default function HomePage() {
+export default function ProtectedRolePage({
+  allowedRoles,
+  eyebrow,
+  title,
+  description,
+}) {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [dashboardMessage, setDashboardMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,19 +39,32 @@ export default function HomePage() {
 
     if (cachedUser) {
       setUser(cachedUser);
+
+      if (!hasRequiredRole(cachedUser, allowedRoles)) {
+        router.replace(getRedirectPathForRole(cachedUser.role));
+        return;
+      }
     }
 
-    async function loadCurrentUser() {
+    async function loadProtectedPage() {
       try {
         const currentUser = await fetchCurrentUser(token);
-        setUser(currentUser);
         persistAuthSession({
           access_token: token,
           user: currentUser,
         });
+        setUser(currentUser);
+
+        if (!hasRequiredRole(currentUser, allowedRoles)) {
+          router.replace(getRedirectPathForRole(currentUser.role));
+          return;
+        }
+
+        const dashboardPayload = await fetchRoleDashboard(currentUser.role, token);
+        setDashboardMessage(dashboardPayload.message);
       } catch (error) {
         clearAuthSession();
-        setErrorMessage(error.message || "Unable to load your account.");
+        setErrorMessage(error.message || "Unable to verify your access.");
         router.replace("/login");
         return;
       } finally {
@@ -50,21 +72,16 @@ export default function HomePage() {
       }
     }
 
-    loadCurrentUser();
-  }, [router]);
-
-  function handleLogout() {
-    clearAuthSession();
-    router.replace("/login");
-  }
+    loadProtectedPage();
+  }, [allowedRoles, router]);
 
   if (isLoading) {
     return (
       <main className="page">
         <section className="card dashboard-card">
           <p className="eyebrow">Loading</p>
-          <h1>Checking your session...</h1>
-          <p>Fetching the current user from the API.</p>
+          <h1>Checking your access...</h1>
+          <p>Verifying your session and role permissions.</p>
         </section>
       </main>
     );
@@ -74,7 +91,7 @@ export default function HomePage() {
     return (
       <main className="page">
         <section className="card dashboard-card">
-          <p className="eyebrow">Session Error</p>
+          <p className="eyebrow">Access Error</p>
           <h1>Authentication required</h1>
           <p>{errorMessage || "Please sign in again."}</p>
           <div className="dashboard-actions">
@@ -90,12 +107,9 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="card dashboard-card">
-        <p className="eyebrow">Authenticated</p>
-        <h1>Hello, {user.full_name}</h1>
-        <p>
-          You are signed in as <strong>{user.role}</strong>. Use the role
-          dashboard below or sign out.
-        </p>
+        <p className="eyebrow">{eyebrow}</p>
+        <h1>{title}</h1>
+        <p>{dashboardMessage || description}</p>
         <div className="user-summary">
           <div>
             <span>Email</span>
@@ -111,12 +125,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="dashboard-actions">
-          <Link className="primary-link" href={getRedirectPathForRole(user.role)}>
-            Open {user.role} dashboard
-          </Link>
-          <button className="ghost-button" type="button" onClick={handleLogout}>
-            Log Out
-          </button>
+          <LogoutButton />
         </div>
       </section>
     </main>

@@ -11,14 +11,22 @@ export function getApiUrl(path) {
 export function getRedirectPathForRole(role) {
   switch (role) {
     case "customer":
-      return "/customer";
+      return "/products";
     case "maker":
       return "/maker";
     case "admin":
       return "/admin";
     default:
-      return "/home";
+      return "/products";
   }
+}
+
+export function hasRequiredRole(user, allowedRoles) {
+  if (!user?.role) {
+    return false;
+  }
+
+  return allowedRoles.includes(user.role);
 }
 
 export function persistAuthSession(payload) {
@@ -112,6 +120,18 @@ export async function registerUser(values) {
 
 export async function fetchCurrentUser(token) {
   const response = await fetch(getApiUrl("/auth/me"), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  return parseApiResponse(response);
+}
+
+export async function fetchRoleDashboard(role, token) {
+  const response = await fetch(getApiUrl(`/dashboard/${role}`), {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,

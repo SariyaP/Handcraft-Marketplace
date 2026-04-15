@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -48,3 +50,19 @@ def get_current_user(
         )
 
     return user
+
+
+def require_roles(*allowed_roles: str) -> Callable:
+    allowed_role_set = set(allowed_roles)
+
+    def dependency(user=Depends(get_current_user)):
+        role_name = getattr(user.role, "name", None)
+        if role_name not in allowed_role_set:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource.",
+            )
+
+        return user
+
+    return dependency

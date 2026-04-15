@@ -43,6 +43,10 @@ class User(TimestampMixin, Base):
         uselist=False,
     )
     products: Mapped[list["Product"]] = relationship(back_populates="maker")
+    product_orders: Mapped[list["ProductOrder"]] = relationship(
+        back_populates="customer",
+        foreign_keys="ProductOrder.customer_id",
+    )
     customer_commissions: Mapped[list["Commission"]] = relationship(
         back_populates="customer",
         foreign_keys="Commission.customer_id",
@@ -63,6 +67,9 @@ class MakerProfile(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
     shop_name: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
     bio: Mapped[Optional[str]] = mapped_column(Text)
+    specialization: Mapped[Optional[str]] = mapped_column(String(150))
+    profile_image_url: Mapped[Optional[str]] = mapped_column(String(255))
+    verification_status: Mapped[str] = mapped_column(String(50), default="unverified", nullable=False)
     location: Mapped[Optional[str]] = mapped_column(String(150))
     contact_email: Mapped[Optional[str]] = mapped_column(String(255))
 
@@ -81,8 +88,104 @@ class Product(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     maker: Mapped["User"] = relationship(back_populates="products")
+    customization_options: Mapped[list["ProductCustomizationOption"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+    orders: Mapped[list["ProductOrder"]] = relationship(back_populates="product")
     wishlists: Mapped[list["Wishlist"]] = relationship(back_populates="product")
     reviews: Mapped[list["Review"]] = relationship(back_populates="product")
+
+
+class ProductCustomizationOption(TimestampMixin, Base):
+    __tablename__ = "product_customization_options"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    product: Mapped["Product"] = relationship(back_populates="customization_options")
+    choices: Mapped[list["ProductCustomizationChoice"]] = relationship(
+        back_populates="option",
+        cascade="all, delete-orphan",
+    )
+
+
+class ProductCustomizationChoice(TimestampMixin, Base):
+    __tablename__ = "product_customization_choices"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    option_id: Mapped[int] = mapped_column(
+        ForeignKey("product_customization_options.id"),
+        nullable=False,
+        index=True,
+    )
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_delta: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+
+    option: Mapped["ProductCustomizationOption"] = relationship(back_populates="choices")
+    selections: Mapped[list["ProductOrderSelection"]] = relationship(back_populates="choice")
+
+
+class ProductOrder(TimestampMixin, Base):
+    __tablename__ = "product_orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    maker_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    quantity: Mapped[int] = mapped_column(default=1, nullable=False)
+    total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
+    customization_summary: Mapped[Optional[str]] = mapped_column(Text)
+
+    product: Mapped["Product"] = relationship(back_populates="orders")
+    customer: Mapped["User"] = relationship(
+        back_populates="product_orders",
+        foreign_keys=[customer_id],
+    )
+    maker: Mapped["User"] = relationship(foreign_keys=[maker_id])
+    selections: Mapped[list["ProductOrderSelection"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+    progress_updates: Mapped[list["ProductOrderProgressUpdate"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+
+
+class ProductOrderSelection(TimestampMixin, Base):
+    __tablename__ = "product_order_selections"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("product_orders.id"), nullable=False, index=True)
+    option_id: Mapped[int] = mapped_column(
+        ForeignKey("product_customization_options.id"),
+        nullable=False,
+        index=True,
+    )
+    choice_id: Mapped[int] = mapped_column(
+        ForeignKey("product_customization_choices.id"),
+        nullable=False,
+        index=True,
+    )
+
+    order: Mapped["ProductOrder"] = relationship(back_populates="selections")
+    option: Mapped["ProductCustomizationOption"] = relationship()
+    choice: Mapped["ProductCustomizationChoice"] = relationship(back_populates="selections")
+
+
+class ProductOrderProgressUpdate(TimestampMixin, Base):
+    __tablename__ = "product_order_progress_updates"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("product_orders.id"), nullable=False, index=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    image_url: Mapped[Optional[str]] = mapped_column(String(255))
+
+    order: Mapped["ProductOrder"] = relationship(back_populates="progress_updates")
 
 
 class Commission(TimestampMixin, Base):
@@ -93,6 +196,7 @@ class Commission(TimestampMixin, Base):
     maker_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
+    customization_notes: Mapped[Optional[str]] = mapped_column(Text)
     budget: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
 
