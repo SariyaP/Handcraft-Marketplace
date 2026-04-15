@@ -1,85 +1,134 @@
 # Handcraft Marketplace
 
-Full-stack starter project with:
+Full-stack handmade marketplace app built with:
 
 - `frontend/`: Next.js App Router + JavaScript
-- `backend/`: FastAPI + MySQL configuration
+- `backend/`: FastAPI + SQLAlchemy + MySQL
 
-This repo only includes project structure and starter setup. No app features are built yet.
+The app supports:
 
-## Structure
+- login and register
+- customer, maker, and admin roles
+- product browsing and product management
+- commissions, wishlist, and reviews
+- admin moderation
 
-```text
-frontend/
-  app/
-  components/
-  lib/
-  types/
+## Prerequisites
 
-backend/
-  app/
-    main.py
-    database.py
-    models/
-    schemas/
-    routers/
-    services/
-    utils/
+- Python 3.11+
+- Node.js 18+
+- MySQL 8+
+
+## Backend Environment
+
+```env
+APP_NAME=Handcraft Marketplace API
+APP_ENV=development
+APP_HOST=0.0.0.0
+APP_PORT=8000
+JWT_SECRET_KEY=change-me
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=43200
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=password
+MYSQL_DATABASE=handcraft_marketplace
+MYSQL_ECHO=false
 ```
 
-## Frontend Setup
+Frontend:
 
-```bash
-cd frontend
-cp .env.example .env.local
-npm install
-npm run dev
+```env
+NEXT_PUBLIC_APP_NAME=Handcraft Marketplace
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
-Open 
+## Run the App
 
-`http://localhost:3000`
+### 1. Create the MySQL database
 
-## Backend Setup
+Open MySQL and create the database:
 
-```bash
-cd backend
-python -m venv .venv
+```sql
+CREATE DATABASE handcraft_marketplace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Windows PowerShell:
+### 2. Run the backend
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Then run:
-
-```bash
-cp .env.example .env
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+.\.venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
 Open:
 
-`http://127.0.0.1:8000/`
+- `http://127.0.0.1:8000/`
+- `http://127.0.0.1:8000/docs`
 
-`http://127.0.0.1:8000/docs`
+### 3. Run the frontend
 
-## Environment Files
+```powershell
+cd frontend
+Copy-Item .env.example .env.local
+npm install
+npm run dev
+```
 
-- Frontend example: [frontend/.env.example](/c:/Users/User/OneDrive/Desktop/Proj-Arch/Handcraft-Marketplace/frontend/.env.example)
-- Backend example: [backend/.env.example](/c:/Users/User/OneDrive/Desktop/Proj-Arch/Handcraft-Marketplace/backend/.env.example)
+Open:
+
+- `http://localhost:3000`
+
+## Seed Demo Data
+
+### Main sample data
+
+```powershell
+cd backend
+.\.venv\Scripts\python seed_products.py
+```
+
+This creates:
+
+- sample makers and maker profiles
+- sample products with customization options
+- sample customer orders and commissions
+
+Sample customer login:
+
+- customer: `mina.customer@example.com`
+- password: `password123`
+
+### Existing user data
+
+```powershell
+cd backend
+.\.venv\Scripts\python seed_existing_users.py
+```
+
+This adds sample products, orders, commissions, and wishlist items for existing maker and customer accounts already stored in the database.
+
+## Tests
+
+Backend tests:
+
+```powershell
+cd backend
+.\.venv\Scripts\python -m pytest tests -q
+```
+
+Frontend checks:
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+```
 
 ## Notes
 
-- Frontend connects to the backend using `NEXT_PUBLIC_API_BASE_URL`
-- Backend reads MySQL settings from `.env`
-- MySQL connection is configured, but no models or tables are created yet
+- The backend expects MySQL, not SQLite.
+- Admin users should be created manually.
